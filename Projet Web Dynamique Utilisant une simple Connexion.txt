@@ -1,0 +1,491 @@
+Projet Web Dynamique Utilisant une simple Connexion
+Dans ce projet, nous allons utiliser une base de données MySQL  titrée  DB_Produit ,  ayant une seule table qui s'appelle Produit et qui a la structure suivante :
+Create Table   Produit  (
+      idProduit   int  Primary Key   auto_increment,
+      nomProduit  varchar(25),
+      Prix        Double,
+      Categorie   int 
+    ) ;
+
+1.- Tout d'abord créons la base puis ajoutons  quelques enregistrements  avant de créer le projet.
+2.- Démarrons  Eclipse avec  un  WorkSpace  titré   EXO_BASEV2
+* Faites la configuration de l'environnement  (JDK  et TomCat )  . Avant de commencer , il faut savoir au préalable quelle version du JDK  qu'on  utilise , quelle version de TomCat  qu'on va utiliser .
+* Création d'un  Projet Web Dynamique   sous le nom de  ProjetMySQL  avec  la version 7.0 du serveur tomcat  qui offre deux possibilités pour le déploiement.
+1. Utilisation du fichier web.xml
+2. Utilisation des annotations
+
+
+3.- Création de l'application  .
+	Nous allons d'abord créer la couche métier puis la couche Web .
+Couche métier
+	
+      La couche métier c'est la partie dans  laquelle  on va faire le mapping   d'objets relationnels . Ce sont des classes qu'on va créer dont leurs instances permettront d'effectuer certaines  opérations .
+
+N_B.- Pour mieux visualiser la structure du projet   nous pouvons activer le mode navigateur, si c'est pas encore fait .
+Dans la structure du projet   nous pouvons voir
+* Le dossier src   dans lequel on va créer les classes .
+* Le dossier lib    dans lequel nous allons ajouter les fichiers .jars
+* Le dossier build   dans lequel nous retrouvons les fichiers compilés d'extension .class
+* le dossier WebContent   qui est là  pour recevoir le contenu web 
+* Le  fichier Web.Xml    du sous dossier /WEB-INF   très important pour déployer les servlets .
+
+a.- Création de la classe Produit
+c'est une classe serializable
+
+package metier;
+import java.io.Serializable;
+
+public class Produit implements Serializable{
+  private int idProduit;
+  private String  nomProduit;
+  private double prix;
+  private int Categorie;
+  
+public int getIdProduit() {
+	return idProduit;
+}
+public void setIdProduit(int idProduit) {
+	this.idProduit = idProduit;
+}
+public String getNomProduit() {
+	return nomProduit;
+}
+public void setNomProduit(String nomProduit) {
+	this.nomProduit = nomProduit;
+}
+public double getPrix() {
+	return prix;
+}
+public void setPrix(double prix) {
+	this.prix = prix;
+}
+public int getCategorie() {
+	return Categorie;
+}
+public void setCategorie(int categorie) {
+	Categorie = categorie;
+}
+public Produit() {
+	super();
+}
+public Produit( String nomProduit, double prix, int categorie) {
+	this.nomProduit = nomProduit;
+	this.prix = prix;
+	Categorie = categorie;
+} 
+}
+
+
+b.- Création de la classe   SingletonConnection
+	Cette classe va nous garantir qu'il y aura une seule connexion quel que soit le nombre d'utilisateurs  de l'application . on doit l'utiliser au chargement de  la classe en mémoire   dans le bloc static  .
+
+ package metier;
+import java.sql.*;
+
+public class SingletonConnection {
+	private static Connection  connection;
+	static{
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+			connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/DB_Produit","root","sqladmin");
+		} catch (Exception e) {
+			e.printStackTrace();
+	 }
+	}
+	
+	public static Connection getConnection() {
+		return connection;
+	}
+}
+
+
+c.- Création de l'interface IMetierProduit
+
+package metier;
+import java.util.List;
+
+public interface IMetierProduit {
+	public List<Produit>  getAllProduit();
+	public List<Produit>   getProduitParMotCle(String mc);
+	public void addProduit(Produit p);
+	public void supprimer(int idProduit);
+	public Produit  getProduit(int idProduit);
+	public void consulterProduit(int idProduit);
+	public void modifierProduit(Produit p);
+}
+
+
+d.-Création de la classe MetierImpl qui est une implementation de l'interface IMetierProduit
+
+	Cette classe peut contenir autant de méthodes que possible . Cependant nous allons utiliser seulement les methodes suivantes :
+
+* List<Produit>   getAllProduit()
+* List<Produit>   getProduitParMotCle(String mc)
+* void   addProduit(Produit p)
+* void   supprimerProduit(int idProduit)
+* Produit   getProduit(int idProduit)
+* void  modifierProduit(Produit p)
+
+package metier;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
+
+import com.mysql.jdbc.PreparedStatement;
+
+
+public class MetierImpl implements IMetierProduit{
+
+	@Override
+	public List<Produit> getAllProduit(){
+       List<Produit>  prods = new ArrayList<Produit>() ;
+       try {
+		Connection conn = SingletonConnection.getConnection();
+		   Statement  st =conn.createStatement();
+		   ResultSet  rs = st.executeQuery("Select * from produit");
+		   while (rs.next()){
+		        Produit p = new Produit();
+		        p.setIdProduit(rs.getInt("idProduit"));
+		        p.setNomProduit(rs.getString("nomProduit"));
+		        p.setPrix(rs.getDouble("prix"));
+		        p.setCategorie(rs.getInt("idCategorie"));
+		        prods.add(p);
+		     }
+		 
+	} catch (SQLException e) {
+		// TODO Auto-generated catch block
+		e.printStackTrace();
+	}
+    	       
+	   return prods;
+	}
+
+	@Override
+	public List<Produit> getProduitParMotCle(String mc) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public void addProduit(Produit p) {
+	       try {
+			Connection conn=SingletonConnection.getConnection();
+			   Statement st= conn.createStatement();
+			   String requete = "insert into Produit values(null,'"+p.getNomProduit()+"',"+p.getPrix()+","+p.getCategorie()+")";
+			   st.executeUpdate(requete);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		}
+	public void supprimer(int idProduit) {
+	       try {
+			Connection conn=SingletonConnection.getConnection();
+			   Statement st= conn.createStatement();
+			   String requete="delete from produit where idProduit="+idProduit;
+			   //ps.setString(1, "idProduit");
+			   st.executeUpdate(requete);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		}
+	
+      public Produit getProduit(int idProduit) {
+        Produit  prod = new Produit();
+    	try {
+			Connection conn=SingletonConnection.getConnection();
+			Statement st= conn.createStatement();
+			String requete="select * from produit where idProduit="+idProduit;
+			ResultSet  rs = st.executeQuery(requete);
+	  	    rs.next();
+  		    prod.setIdProduit(rs.getInt("idProduit"));
+  		    prod.setNomProduit(rs.getString("nomProduit"));
+  		    prod.setPrix(rs.getDouble("prix"));
+  		    prod.setCategorie(rs.getInt("idCategorie"));
+  		   	    		
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	    return prod;		
+	}
+	
+
+	
+	public void modifierProduit(Produit p) {
+		try {
+			Connection conn=SingletonConnection.getConnection();
+			Statement st= conn.createStatement();
+			String requete="Update Produit set nomProduit='"+p.getNomProduit()+"',prix="+p.getPrix()+",idCategorie="+p.getCategorie()+ " where idProduit="+p.getIdProduit();
+		    st.executeUpdate(requete);	    		
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}	
+}
+
+e.-  Test Unitaire
+
+	Arrrivé  ici, on peut faire un test unitaire  qui nous permet de tester une methode quelconque pour voir si notre implémentation est correcte . Juste avant, nous devons ajouter le pilote jdbc   < mysql-connector-java-5.1.6-bin.jar>  dans le dossier lib du sous dossier WEB-INF du Projet  .  C'est  un test classique   .
+Pour cela créons une classe TestMetier  dans le package metier comportant la methode main :
+
+package metier;
+
+import java.util.List;
+
+public class TestMetier {
+
+	public static void main(String[] args) {
+      MetierImpl x = new MetierImpl();
+      x.addProduit(new Produit( "Lunettes", 3234.5, 1));
+      List<Produit>  prods = x.getAllProduit();
+      for (Produit p : prods) {
+    	 System.out.println(p.getNomProduit()); 
+      }
+	}
+
+}
+
+      Si nous marche très bien, nous pouvons maintenant créer la couche web
+
+Couche  web
+	Dans cette couche , nous allons d'abord créer le modèle qui est un objet dans lequel on va stocker les données qu'on va saisir  et le resultat qu'on va afficher  .  On aura soin de génerer les  getters  et les setters.
+
+1. Création de la classe ProduitModele  dans le package web
+
+   package web;
+   
+import java.util.ArrayList;
+import java.util.List;
+
+import metier.Produit;
+
+public class ProduitModele {
+	private List<Produit>  produits = new ArrayList<Produit>();
+
+	public List<Produit> getProduits() {
+		return produits;
+	}
+
+	public void setProduits(List<Produit> produits) {
+		this.produits = produits;
+	}
+}
+
+
+2. Création du controleur  dans le package web
+
+package web;
+
+import java.io.IOException;
+import java.util.List;
+
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import metier.IMetierProduit;
+import metier.MetierImpl;
+import metier.Produit;
+
+public class ControleurServlet extends HttpServlet{
+    private  IMetierProduit  metier;
+    private String nom;
+    private double prix;
+    private int categorie;
+    private String nomp="";
+	@Override
+	public void init() throws ServletException {
+          metier= new MetierImpl();
+	}
+	
+	@Override
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+	
+		
+		
+		 if (request.getParameter("bouton").equals("Ajouter")) {
+			 if (request.getParameter("nom").compareTo("")!=0) {
+						 
+			 		System.out.println("test ok 2");			
+		 		    nom=request.getParameter("nom");
+		            prix=Double.parseDouble(request.getParameter("prix"));
+		            categorie=Integer.parseInt(request.getParameter("categorie"));
+		            ecrire(nom, prix,categorie);
+			 }  
+   	      }
+		 
+		 if (request.getParameter("bouton").equals("Supprimer")) {
+			System.out.println("Suppression");
+	    	int id = Integer.parseInt(request.getParameter("id"));
+       		supprimer(id);	    	 
+	     }
+	    	 
+	 
+		 if (request.getParameter("bouton").equals("Consulter")) {  
+		    	int id = Integer.parseInt(request.getParameter("id"));
+	       		Produit pp = metier.getProduit(id);
+	       		request.setAttribute("id", pp.getIdProduit());
+	    		request.setAttribute("nom", pp.getNomProduit());
+	            request.setAttribute("prix", pp.getPrix());
+	       		request.setAttribute("categorie", pp.getCategorie());
+	   	     }
+
+		 if (request.getParameter("bouton").equals("Modifier")) {  
+		    	int id = Integer.parseInt(request.getParameter("id"));
+	 		    nom=request.getParameter("nom");
+	            prix=Double.parseDouble(request.getParameter("prix"));
+	            categorie=Integer.parseInt(request.getParameter("categorie"));
+                System.out.println("idProduit ="+id);
+		    	Produit pp = new Produit();
+	       		pp.setIdProduit(id);
+	       		pp.setNomProduit(nom);
+	       		pp.setPrix(prix);
+	       		pp.setCategorie(categorie);
+	       		metier.modifierProduit(pp);  
+	       	    	
+	   	     }
+	    	 
+	 
+	   ProduitModele mod = new ProduitModele();
+       List<Produit> prods = metier.getAllProduit();
+       mod.setProduits(prods);
+       request.setAttribute("modele", mod);
+       request.getRequestDispatcher("VueProduit.jsp").forward(request, response);
+	}
+	
+	public void ecrire(String nom, double prix, int categorie) {
+		Produit p = new Produit(nom,prix,categorie);
+		metier.addProduit(p); 
+	}
+	public void supprimer(int idP) {
+		metier.supprimer(idP) ;
+	}
+	public void consulterProduit(int idP) {
+		Produit pp= metier.getProduit(idP);
+		
+	}
+
+	@Override
+	protected void doPost(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+     doGet(request, response);
+	}
+}	
+
+
+
+3.- Configuration du fichier Web.xml
+
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://java.sun.com/xml/ns/javaee" xmlns:web="http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd" id="WebApp_ID" version="3.0">
+<display-name>ProjetMysql</display-name>
+ <servlet>
+   <servlet-name>cs</servlet-name>
+   <servlet-class>web.ControleurServlet</servlet-class>
+ </servlet>
+ 
+ <servlet-mapping>
+    <servlet-name>cs</servlet-name>
+    <url-pattern>*.do</url-pattern>
+ </servlet-mapping>
+<welcome-file-list>
+    <welcome-file>controleur.do</welcome-file>
+  </welcome-file-list>
+</web-app>
+
+
+4.- Création dans Web-Content la page  jsp : ViewProduit.jsp
+	Dans cette partie là , nous allons utiliser les taglib jstl .  Pour cela nous allons ajouter dans le dossier lib  les fichiers jars suivants :
+* jstl.jar
+* standard.jar
+
+Les 2 fichiers .jar étant ajoutés, on peut maintenant  inserer cette ligne  après la 
+première  ligne du fichier    VueProduit.jsp  .
+
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core"  prefix="c" %>
+
+Voici le  contenu du fichier ViewProduit.jsp
+
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+    pageEncoding="ISO-8859-1"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core"  prefix="c" %>
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>Insert title here</title>
+<SCRIPT LANGUAGE="javascript">
+function controle(form1) {
+document.form1.nom.value="${nom}";
+  // alert("Vous avez tapé : " + test);
+}
+</SCRIPT>
+
+</head>
+<body>
+<form  action="controleur.do"  method="get"  name="form1">
+  <h2>Saisie des Donnees</h2>
+ <table>
+     <tr>
+       <td>Id Produit</td>
+       <td><input type="text"  name="id"   value ="${id}"></td>
+     </tr>
+     <tr>
+       <td>Nom Produit</td>
+       <td><input type="text"  name="nom"  value ="${nom}"></td>
+     </tr>
+     <tr>
+       <td>Prix Produit</td>
+       <td><input type=""text"  name="prix" value="${prix}"></td>
+     </tr>
+     <tr>
+       <td>Categorie Produit</td>
+       <td><input type="text"  name="categorie"  value="${categorie}"></td>
+     </tr>
+     <tr>
+       <td><input type="submit" value="Ajouter" name="bouton"  style="color:red"; style="background-color:#3cb371" ></td>
+       <td><input type="submit" value="Modifier" name="bouton"  style="color:red"; style="background-color:#3cb371" ></td>
+     </tr>
+ 
+ </table>
+<table border="1" width="80%">
+   <tr>
+   <th>IdProduit</th><th>Nom Produit</th><th>Prix</th><th>Categorie</th><th>Suppression</th><th>Consultation</th>
+   </tr>
+   <c:forEach   items="${modele.produits}" var="p">
+       <tr>
+            <td>${p.idProduit}</td>
+            <td>${p.nomProduit}</td>
+            <td>${p.prix}</td>
+            <td>${p.categorie}</td>
+            <td><a href="controleur.do?nom=sfs&prix=22&categorie=1&id=${p.idProduit}&bouton=Supprimer" name="bouton">Suppression</a></td>
+            <td><a href="controleur.do?nom=sfs&prix=22&categorie=1&id=${p.idProduit}&bouton=Consulter" name="bouton">Consultation</a></td>
+       </tr>     
+   </c:forEach>
+   
+</table>
+</form>
+
+</body>
+</html>
+
+
+
+
+
+
+
+1
+
+
+
+
+
+
